@@ -1,5 +1,5 @@
 use super::{
-    retries2::{RetryAction, RetryLogic},
+    retries2::{IsRetriable, RetryAction, RetryLogic, ShouldRetry},
     service2::{TowerBatchedSink, TowerRequestSettings},
     Batch, BatchSettings,
 };
@@ -322,6 +322,35 @@ impl<B> Service<B> for HttpBatchService<B> {
     }
 }
 
+impl IsRetriable for hyper13::Error {
+    fn is_retriable(&self) -> bool {
+        self.is_connect() || self.is_closed()
+    }
+}
+
+impl<T: AsRef<[u8]>> ShouldRetry for http02::Response<T> {
+    fn should_retry(&self) -> RetryAction {
+        let status = self.status();
+
+        match status {
+            StatusCode::TOO_MANY_REQUESTS => RetryAction::Retry("Too many requests".into()),
+            StatusCode::NOT_IMPLEMENTED => {
+                RetryAction::DontRetry("endpoint not implemented".into())
+            }
+            _ if status.is_server_error() => RetryAction::Retry(
+                format!(
+                    "{}: {}",
+                    status,
+                    String::from_utf8_lossy(self.body().as_ref())
+                )
+                .into(),
+            ),
+            _ if status.is_success() => RetryAction::Successful,
+            _ => RetryAction::DontRetry(format!("response status: {}", status)),
+        }
+    }
+}
+
 #[derive(Clone)]
 pub struct HttpRetryLogic;
 
@@ -330,23 +359,11 @@ impl RetryLogic for HttpRetryLogic {
     type Response = hyper13::Response<Bytes>;
 
     fn is_retriable_error(&self, error: &Self::Error) -> bool {
-        error.is_connect() || error.is_closed()
+        error.is_retriable()
     }
 
     fn should_retry_response(&self, response: &Self::Response) -> RetryAction {
-        let status = response.status();
-
-        match status {
-            StatusCode::TOO_MANY_REQUESTS => RetryAction::Retry("Too many requests".into()),
-            StatusCode::NOT_IMPLEMENTED => {
-                RetryAction::DontRetry("endpoint not implemented".into())
-            }
-            _ if status.is_server_error() => RetryAction::Retry(
-                format!("{}: {}", status, String::from_utf8_lossy(response.body())).into(),
-            ),
-            _ if status.is_success() => RetryAction::Successful,
-            _ => RetryAction::DontRetry(format!("response status: {}", status)),
-        }
+        response.should_retry()
     }
 }
 

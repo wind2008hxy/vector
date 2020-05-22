@@ -29,6 +29,39 @@ pub trait RetryLogic: Clone {
     }
 }
 
+pub trait IsRetriable: /* FIXME std::error::Error + */ Send + Sync + 'static {
+    fn is_retriable(&self) -> bool;
+}
+
+impl<T: IsRetriable> IsRetriable for Box<T> {
+    fn is_retriable(&self) -> bool {
+        self.as_ref().is_retriable()
+    }
+}
+
+// FIXME: This default impl shouldn't be necessary. I will make it go
+// away when the rest manages to compile.
+impl IsRetriable for crate::Error {
+    fn is_retriable(&self) -> bool {
+        false
+    }
+}
+
+pub trait ShouldRetry {
+    fn should_retry(&self) -> RetryAction {
+        // Treat the default as the request is successful
+        RetryAction::Successful
+    }
+}
+
+impl<T: ShouldRetry> ShouldRetry for Box<T> {
+    fn should_retry(&self) -> RetryAction {
+        self.as_ref().should_retry()
+    }
+}
+
+impl ShouldRetry for () {}
+
 #[derive(Debug, Clone)]
 pub struct FixedRetryPolicy<L> {
     remaining_attempts: usize,
@@ -88,6 +121,7 @@ impl<L: RetryLogic> FixedRetryPolicy<L> {
 impl<Req, Res, L> Policy<Req, Res, Error> for FixedRetryPolicy<L>
 where
     Req: Clone,
+    // FIXME Res: ShouldRetry,
     L: RetryLogic<Response = Res>,
 {
     type Future = RetryPolicyFuture<L>;

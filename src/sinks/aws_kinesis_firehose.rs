@@ -4,7 +4,7 @@ use crate::{
     region::RegionOrEndpoint,
     sinks::util::{
         encoding::{EncodingConfig, EncodingConfiguration},
-        retries::RetryLogic,
+        retries::{IsRetriable, RetryLogic, ShouldRetry},
         rusoto2::{self, AwsCredentialsProvider},
         BatchEventsConfig, TowerRequestConfig,
     },
@@ -146,6 +146,19 @@ impl fmt::Debug for KinesisFirehoseService {
     }
 }
 
+impl IsRetriable for RusotoError<PutRecordBatchError> {
+    fn is_retriable(&self) -> bool {
+        match self {
+            RusotoError::HttpDispatch(_) => true,
+            RusotoError::Service(PutRecordBatchError::ServiceUnavailable(_)) => true,
+            RusotoError::Unknown(res) if res.status.is_server_error() => true,
+            _ => false,
+        }
+    }
+}
+
+impl ShouldRetry for PutRecordBatchOutput {}
+
 #[derive(Debug, Clone)]
 struct KinesisFirehoseRetryLogic;
 
@@ -154,12 +167,7 @@ impl RetryLogic for KinesisFirehoseRetryLogic {
     type Response = PutRecordBatchOutput;
 
     fn is_retriable_error(&self, error: &Self::Error) -> bool {
-        match error {
-            RusotoError::HttpDispatch(_) => true,
-            RusotoError::Service(PutRecordBatchError::ServiceUnavailable(_)) => true,
-            RusotoError::Unknown(res) if res.status.is_server_error() => true,
-            _ => false,
-        }
+        error.is_retriable()
     }
 }
 

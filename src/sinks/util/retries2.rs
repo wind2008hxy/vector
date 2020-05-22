@@ -1,4 +1,4 @@
-pub use super::retries::{RetryAction, RetryLogic};
+pub use super::retries::{IsRetriable, RetryAction, RetryLogic, ShouldRetry};
 use crate::Error;
 use futures::FutureExt;
 use std::{
@@ -69,7 +69,9 @@ impl<L: RetryLogic> FixedRetryPolicy<L> {
 impl<Req, Res, L> Policy<Req, Res, Error> for FixedRetryPolicy<L>
 where
     Req: Clone,
+    Res: ShouldRetry,
     L: RetryLogic<Response = Res>,
+    // FIXME L::Error: IsRetriable,
 {
     type Future = RetryPolicyFuture<L>;
 
@@ -255,6 +257,14 @@ mod tests {
 
         policy = policy.advance();
         assert_eq!(Duration::from_secs(10), policy.backoff());
+    }
+
+    impl ShouldRetry for &'static str {}
+
+    impl IsRetriable for Error {
+        fn is_retriable(&self) -> bool {
+            self.0
+        }
     }
 
     #[derive(Debug, Clone)]

@@ -1,4 +1,4 @@
-use super::retries2::{FixedRetryPolicy, RetryLogic};
+use super::retries2::{FixedRetryPolicy, IsRetriable, RetryLogic, ShouldRetry};
 use super::{Batch, BatchSettings, BatchSink};
 use crate::buffers::Acker;
 use serde::{Deserialize, Serialize};
@@ -118,9 +118,10 @@ impl TowerRequestSettings {
     // associated types that cannot be expressed in stable Rust.
     where
         L: RetryLogic<Response = S::Response> + Send + 'static,
+        L::Error: IsRetriable,
         S: Service<Request> + Clone + Send + 'static,
-        S::Error: Into<crate::Error> + Send + Sync + 'static,
-        S::Response: Send + std::fmt::Debug,
+        S::Error: IsRetriable + Into<crate::Error> + Send + Sync + 'static,
+        S::Response: ShouldRetry + Send + std::fmt::Debug,
         S::Future: Send + 'static,
         B: Batch<Output = Request>,
         Request: Send + Clone + 'static,
@@ -148,10 +149,11 @@ pub struct TowerRequestLayer<L, Request> {
 impl<S, L, Request> Layer<S> for TowerRequestLayer<L, Request>
 where
     S: Service<Request> + Send + Clone + 'static,
-    S::Response: Send + 'static,
-    S::Error: Into<crate::Error> + Send + Sync + 'static,
+    S::Response: ShouldRetry + Send + 'static,
+    S::Error: IsRetriable + Into<crate::Error> + Send + Sync + 'static,
     S::Future: Send + 'static,
     L: RetryLogic<Response = S::Response> + Send + 'static,
+    L::Error: IsRetriable,
     Request: Clone + Send + 'static,
 {
     type Service = BoxService<Request, S::Response, crate::Error>;
@@ -174,6 +176,7 @@ where
 }
 
 mod compat {
+    use super::{IsRetriable, ShouldRetry};
     use futures::compat::Compat;
     use futures01::Poll;
     use std::pin::Pin;
@@ -193,6 +196,8 @@ mod compat {
     impl<S, Request> Service01<Request> for TowerCompat<S>
     where
         S: Service03<Request>,
+        S::Error: IsRetriable,
+        S::Response: ShouldRetry,
     {
         type Response = S::Response;
         type Error = S::Error;
