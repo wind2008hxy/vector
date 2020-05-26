@@ -15,10 +15,10 @@
     missing_docs
 )]
 
-mod custom_resource_file;
 pub mod framework;
 pub mod interface;
 pub mod namespace;
+mod resource_file;
 pub mod test_pod;
 pub mod vector;
 

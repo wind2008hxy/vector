@@ -1,5 +1,4 @@
-use super::{custom_resource_file::CustomResourceFile, Result};
-use k8s_openapi::api::core::v1::Pod;
+use super::Result;
 use std::process::{Command, Stdio};
 
 pub struct Manager {

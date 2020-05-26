@@ -1,16 +1,18 @@
 use std::path::{Path, PathBuf};
+use tempfile::{tempdir, TempDir};
 
 #[derive(Debug)]
-pub struct CustomResourceFile {
+pub struct ResourceFile {
+    dir: TempDir,
     path: PathBuf,
 }
 
-impl CustomResourceFile {
+impl ResourceFile {
     pub fn new(data: &str) -> std::io::Result<Self> {
-        let mut path = std::env::temp_dir();
-        path.push("custom.yaml");
+        let dir = tempdir()?;
+        let path = dir.path().join("custom.yaml");
         std::fs::write(&path, data)?;
-        Ok(Self { path })
+        Ok(Self { dir, path })
     }
 
     pub fn path(&self) -> &Path {
@@ -18,7 +20,7 @@ impl CustomResourceFile {
     }
 }
 
-impl Drop for CustomResourceFile {
+impl Drop for ResourceFile {
     fn drop(&mut self) {
         std::fs::remove_file(&self.path).expect("unable to clean up custom resource file");
     }

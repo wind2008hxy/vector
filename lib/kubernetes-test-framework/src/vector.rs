@@ -1,4 +1,4 @@
-use super::{custom_resource_file::CustomResourceFile, Result};
+use super::{resource_file::ResourceFile, Result};
 use std::process::{Command, Stdio};
 
 /// Takes care of deploying vector into the kubernetes cluster.
@@ -8,13 +8,13 @@ use std::process::{Command, Stdio};
 pub struct Manager {
     interface_command: String,
     namespace: String,
-    custom_resource_file: CustomResourceFile,
+    custom_resource_file: ResourceFile,
 }
 
 impl Manager {
     /// Create a new [`Manager`].
     pub fn new(interface_command: &str, namespace: &str, custom_resource: &str) -> Result<Self> {
-        let custom_resource_file = CustomResourceFile::new(custom_resource)?;
+        let custom_resource_file = ResourceFile::new(custom_resource)?;
         Ok(Self {
             interface_command: interface_command.to_owned(),
             namespace: namespace.to_owned(),

@@ -1,10 +1,10 @@
-use super::{custom_resource_file::CustomResourceFile, Result};
+use super::{resource_file::ResourceFile, Result};
 use k8s_openapi::api::core::v1::Pod;
 use std::process::{Command, Stdio};
 
 #[derive(Debug)]
 pub struct Config {
-    custom_resource_file: CustomResourceFile,
+    custom_resource_file: ResourceFile,
 }
 
 impl Config {
@@ -13,7 +13,7 @@ impl Config {
     }
 
     pub fn from_resource_string(resource: &str) -> Result<Self> {
-        let custom_resource_file = CustomResourceFile::new(resource)?;
+        let custom_resource_file = ResourceFile::new(resource)?;
         Ok(Self {
             custom_resource_file,
         })
