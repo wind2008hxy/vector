@@ -18,6 +18,7 @@
 mod custom_resource_file;
 pub mod framework;
 pub mod interface;
+pub mod namespace;
 pub mod test_pod;
 pub mod vector;
 

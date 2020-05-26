@@ -20,18 +20,17 @@ impl Config {
     }
 }
 
+#[derive(Debug)]
 pub struct Manager {
     kubectl_command: String,
     config: Config,
-    namespace: Option<String>,
 }
 
 impl Manager {
-    pub fn new(kubectl_command: &str, config: Config, namespace: Option<String>) -> Result<Self> {
+    pub fn new(kubectl_command: &str, config: Config) -> Result<Self> {
         Ok(Self {
             kubectl_command: kubectl_command.to_owned(),
             config,
-            namespace,
         })
     }
 
@@ -39,9 +38,6 @@ impl Manager {
         let mut command = self.prepare_command();
 
         command.arg("create");
-        if let Some(ref namespace) = self.namespace {
-            command.arg("-n").arg(namespace);
-        }
         command
             .arg("-f")
             .arg(self.config.custom_resource_file.path());
@@ -54,9 +50,6 @@ impl Manager {
         let mut command = self.prepare_command();
 
         command.arg("delete");
-        if let Some(ref namespace) = self.namespace {
-            command.arg("-n").arg(namespace);
-        }
         command
             .arg("-f")
             .arg(self.config.custom_resource_file.path());

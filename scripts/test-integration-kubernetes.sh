@@ -71,4 +71,4 @@ fi
 export KUBE_TEST_DEPLOY_COMMAND="scripts/deploy-kubernetes-test.sh"
 
 # Run the tests.
-cargo test --test kubernetes --no-default-features
+cargo test --test kubernetes --no-default-features --features k8s-openapi
