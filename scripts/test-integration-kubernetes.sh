@@ -70,6 +70,5 @@ fi
 # Set the deployment command for integration tests.
 export KUBE_TEST_DEPLOY_COMMAND="scripts/deploy-kubernetes-test.sh"
 
-
 # Run the tests.
-cargo test --no-default-features --features kubernetes-integration-tests
+cargo test --test kubernetes --no-default-features
